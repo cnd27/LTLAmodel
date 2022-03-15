@@ -1,0 +1,5 @@
+*.m~
+*.asv
+*.png
+*.pdf
+.DS_Store
