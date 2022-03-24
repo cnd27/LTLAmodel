@@ -1,5 +1,5 @@
 function p = getParameters()
-%GETPARAMETERS Summary of this function goes here
+%GETPARAMETERS Basic parameters
 
 % Define the population
 load('./data/popdata20.mat');

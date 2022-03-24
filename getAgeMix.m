@@ -1,6 +1,5 @@
 function agemix = getAgeMix()
-%GETMIX Summary of this function goes here
-%   Detailed explanation goes here
+%GETMIX Get rough age mixing patterns from POLYMOD data
 
 
 % Taken from POLYMOD with 5 yer age bands

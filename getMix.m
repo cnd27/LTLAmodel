@@ -1,5 +1,5 @@
 function mix = getMix(p,popdat,home,nonworkmov,t,cent,movp)
-%GETMIX
+%GETMIX Mixing between LTLAs
 
     %popdat.W is a LTLA by LTLA matrix of movements for work between LTLAs
     

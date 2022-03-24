@@ -1,8 +1,6 @@
 function rates = getRates(foiD,foiN,p,state,nage,nvar,nexp,nvacstate,NN,l)
-%CALCULATERATES Summary of this function goes here
-%   Detailed explanation goes here
-%State is S E1 I1 A1 RI1 RA1 ... En In An RIn RAn VU VUE1 VUI1 VUA1 VURI1
-%VURA1 ...V1F ... V2F ... V1 .... V2 ...
+%GETRATES Rate for each event
+
 rates = zeros(nage,nvacstate,nvar,4+nexp,NN);
 
 if l == 1

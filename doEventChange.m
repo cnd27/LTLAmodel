@@ -1,6 +1,5 @@
 function state = doEventChange(state,events,Nexp)
-%UNTITLED2 Summary of this function goes here
-%   Detailed explanation goes here
+%DOEVENTCHANGE Updates the state
 
     state(:,:,1,1,:) = state(:,:,1,1,:) - sum(events(:,:,:,1,:),3);
     state(:,:,:,2,:) = state(:,:,:,2,:) + events(:,:,:,1,:);

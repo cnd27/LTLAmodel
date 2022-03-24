@@ -1,7 +1,5 @@
-function ICs = getICs(p,Nage,Nvacstates,Nvar,Nexp,vac,vacdays,infe,rec,tstart,alpw,alpn,impdistalpha,newvar)
-
-%GETICS Summary of this function goes here
-%   Detailed explanation goes here
+function ICs = getICs(p,Nage,Nvacstates,Nvar,Nexp,vac,vacdays,infe,rec,tstart,alpw,alpn,impdistalpha)
+%GETICS Initial conditions
 
     ICs = zeros(Nage,Nvacstates,Nvar,4+Nexp,size(p.Na,1));
     % Get initial vaccianted
@@ -38,12 +36,8 @@ function ICs = getICs(p,Nage,Nvacstates,Nvar,Nexp,vac,vacdays,infe,rec,tstart,al
     % Seed new variant
     if tstart == 279
         if impdistalpha == 1
-            if newvar == 1
-                load('./data/vardists.mat')
-                impdistalp = alpdist;
-            else   
-                load('./data/impdistalp.mat')
-            end
+            load('./data/vardists.mat')
+            impdistalp = alpdist;
             wwt = histcounts(randsample(1:312,alpn,1,impdistalp),0.5:1:312.5);
             place = find(wwt>0);
             number = wwt(wwt>0);

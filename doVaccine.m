@@ -1,79 +1,9 @@
-function [state,surgestate] = doVaccine(state,p,t,vac,Nexp,Nvar,Nage,Nvacstates,surge,surgeboost,surgethresh,delay,surgestate,omitdd,maxper,svar,threshtype)
-%DOVACCINE 
+function [state] = doVaccine(state,p,t,vac,Nexp,Nvar,Nage,Nvacstates)
+%DOVACCINE Moves people to correct vaccine class
 
     % Get number to be vaccinated at time t for each dose (Age, LTLA)
     v1 = vac(:,:,t,1); 
     v2 = vac(:,:,t,2);
-    if surge == 1
-        vv1 = zeros(size(v1,1),size(v1,2));
-        vv2 = zeros(size(v2,1),size(v2,2));
-        if threshtype == 1
-            surgingnow = squeeze(sum(sum(sum(state(:,:,svar,(Nexp+2):(Nexp+3),:),1),2),4)./sum(sum(sum(sum(state(:,:,:,(Nexp+2):(Nexp+3),:),1),2),3),4));
-        elseif threshtype == 2
-            surgingnow = squeeze(sum(sum(sum(sum(state(:,:,:,(Nexp+2):(Nexp+3),:),1),2),3),4)./p.N);
-        elseif threshtype == 3
-            load('./data/regionnum.mat')
-            surgingnow = regionnum == 6;
-        end
-        tosurge = surgingnow > surgethresh;
-        
-        % Maximum surging
-        maxsurge = round(maxper*312);
-        [~,tmpi] = sort(surgingnow,'descend');
-        currentsurge = (surgestate(:,t)>0);
-        currentsurgen = sum(surgestate(:,t)>0);
-        currentsurgeh = (surgestate(:,t)==1|surgestate(:,t)==2);
-        currentsurgehn = sum(surgestate(:,t)==1|surgestate(:,t)==2);
-        tosurgen = zeros(312,1);
-        tosurgen(currentsurgeh) = 1;
-        lefttosurge = min(maxsurge+omitdd- currentsurgehn,sum(logical(tosurge)&~logical(tosurgen)));
-        tmpis = setdiff(tmpi,find(currentsurgeh),'stable');
-        tosurgen(tmpis((1+omitdd):(lefttosurge))) = 1;
-        tosurgen(tmpis(1:min(omitdd,sum(tosurge)))) = 2;
-
-        tosurge = tosurgen;
-        
-        if delay > 0
-            surgestate(tosurge==1 & surgestate(:,t)==0 & (surgestate(:,t-1)==2|surgestate(:,t-1)==3),t) = 3;
-            surgestate(tosurge==1 & surgestate(:,t)==0,(t+delay):(t+13+delay)) = 2;
-            surgestate(tosurge==1 & surgestate(:,t)==0,t:(t+delay-1)) = 1;
-            surgestate(tosurge==2,t) = -1;
-        else
-            surgestate(tosurge==1 & surgestate(:,t)==0 & (surgestate(:,t-1)==2|surgestate(:,t-1)==3),t) = 3;
-            surgestate(tosurge==1 & surgestate(:,t)==0,t:(t+13)) = 2;
-            surgestate(tosurge==2,t) = -1;
-        end
-
-        surgestateV = [zeros(312,14) surgestate];
-        
-        vv1(:,surgestateV(:,t)>0) = min(round(v1(:,surgestateV(:,t)>0)*surgeboost),squeeze(sum(sum(state(:,1,:,[1 5],surgestateV(:,t)>0),3),4)));
-        if sum(sum(vv1)) > sum(sum(v1))
-            lowersurge = fminsearch(@(x)abs(sum(sum(v1))-sum(sum(round(vv1(:,surgestateV(:,t)>0)*x)))),1);
-            vv1(:,surgestateV(:,t)>0) = round(vv1(:,surgestateV(:,t)>0)*lowersurge);    
-        end
-        vv1(:,surgestateV(:,t)<1) = v1(:,surgestateV(:,t)<1);
-        if sum(sum(vv1)) > sum(sum(v1))
-            lowersurge2 = fminsearch(@(x)abs(sum(sum(v1))-sum(sum(vv1(:,surgestateV(:,t)>0)))-sum(sum(round(vv1(:,surgestateV(:,t)<1)*x)))),1);
-            vv1(:,surgestateV(:,t)<1) = round(vv1(:,surgestateV(:,t)<1)*lowersurge2);
-        end
-        vv1(:,surgestateV(:,t)==1) = v1(:,surgestateV(:,t)==1);
-        
-        vv2(:,surgestateV(:,t)>0) = min(round(v2(:,surgestateV(:,t)>0)*surgeboost),squeeze(sum(sum(state(:,2,:,[1 5],surgestateV(:,t)>0),3),4)));
-        if sum(sum(vv2)) > sum(sum(v2))
-            lowersurge3 = fminsearch(@(x)abs(sum(sum(v2))-sum(sum(round(vv2(:,surgestateV(:,t)>0)*x)))),1);
-            vv2(:,surgestateV(:,t)>0) = round(vv2(:,surgestateV(:,t)>0)*lowersurge3);
-        end
-        vv2(:,surgestateV(:,t)<1) = v2(:,surgestateV(:,t)<1);
-        if sum(sum(vv2)) > sum(sum(v2))
-            lowersurge4 = fminsearch(@(x)abs(sum(sum(v2))-sum(sum(vv2(:,surgestateV(:,t)>0)))-sum(sum(round(vv2(:,surgestateV(:,t)<1)*x)))),1);
-            vv2(:,surgestateV(:,t)<1) = round(vv2(:,surgestateV(:,t)<1)*lowersurge4);
-        end
-        vv2(:,surgestateV(:,t)==1) = v2(:,surgestateV(:,t)==1);
-
-        v1 = max(0,vv1);
-        v2 = max(0,vv2);
-                
-    end
     
     if sum(v1+v2,'all') > 0
         % Check not too many vaccinated

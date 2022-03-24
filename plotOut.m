@@ -1,14 +1,13 @@
 %% Model set up
 p = getParameters(); % Get model parameters
-Nvar = 3; % Number of variants
+Nvar = 3; % Number of variants (wildtype, alpha, delta)
 Nvacstates = 3; %Number of vaccine states (unvac, v1, v2)
-Nexp = 1; % Number of compartments in exposed class
-Nage = size(p.Na,2); % Number of age classes
+Nexp = 1; % Number of compartments for exposed class
+Nage = size(p.Na,2); % Number of age classes (0-17, 18-65, 66+)
 agemixg = getAgeMix(); % Get age mixing matrix
 
-load('./data/NewVac14.mat') % Load vaccine data (delayed by 14 days)
+load('./data/NewVac14.mat') % Load vaccine data (delayed by 14 days to account for vaccinated but not protected)
 vac = vac14;
-load('./data/googleWork.mat') % Load Google working data
 nonworkmov = 0; % 0 if non-workers do not move between LTLAs
 
 load('./data/LineListData.mat') % Load linelist data (with and without age breakdown)
@@ -27,25 +26,22 @@ while sum(isnan(sgtf),'all') > 0
     av = av+1;
 end
 
+W = 43; % Length of data in weeks
+tstart = 279; % Start in days since 1st Jan 2020
+tend = 580; % End in days
+
 % Precautionary behaviour and mobility derived from Google data
 load('./data/googleMov.mat')
 gprec = (100+movav(tstart:(tend-1),:))/100;
 gmob = max(0,min(1,1-(100+movwork(tstart:(tend-1),:))/100));
 
 neg = 0; % Negative binmoial for exposures
-surge = 0; % Do surge vaccine
-surgeboost = 0; % Boost vaccine by percentage
-surgethresh = 0; % LTLA threshold for surge vaccination
-impdistalpha = 1;
-newvar = 1;
-ltlaprecmob = 1;
-load('./data/regionnum.mat')
-printing = 0;
-plotmaps = 0;
-
-W = 43; % Length of data in weeks
-tstart = 279; % Start in days since 1st Jan 2020
-tend = 580; % End in days
+impdistalpha = 1; % Use alpha case distribution, otherwise weight alpha cases to London and SE
+ltlaprecmob = 1; % Use LTLA %home data, otherwise average
+load('./data/regionnum.mat') %NHS region number of LTLAs
+printing = 0; % Save figures as PNGs
+plotmaps = 1; % Plot spatial spread on maps
+name = "Plot"; % Plot name
 
 % Number of fitted parameters
 Npars = 56;
@@ -63,21 +59,22 @@ FF = sum(mean(dists)>0); % Get final generation of fitting
 thetav = parsA(:,:,FF); % Get posterior
 
 % Get fitted values
-
 precv = [movmean(thetav(:,precgi(1:36)),4,2) thetav(:,precgi(37:43))];
 mobv = thetav(:,mobgi);
 mobscalev = 3+5*thetav(:,mobscalegi);
 dav = thetav(:,transgi(1:3));
 tauv = thetav(:,transgi(4));
+alpnv = round(3000*thetav(:,alpngi)); 
+delnv = round(20*thetav(:,delngi));
+repv = thetav(:,repgi);
+
+% Set other fixed parameters
 R0v = 2.7.*ones(size(parsA,1),1);
 trv = [4/2.7 6.5/4].*ones(size(parsA,1),1);
 prec3v = repmat(precv,[1,1,3]);
 agemixv = repmat(reshape(agemixg,[1,3,3]),[size(parsA,1),1,1]);
-alpnv = round(3000*thetav(:,alpngi)); 
 alpwv = 2*ones(size(parsA,1),1);
-delnv = round(20*thetav(:,delngi));
 deltastartv = 426*ones(size(parsA,1),1);
-reglv = ones(size(parsA,1),312);   
 
 %% Model Simulation
 
@@ -93,6 +90,7 @@ states = zeros(Nage,Nvacstates,Nvar,4+Nexp,p.Nltlas,1+2*(tend-tstart));
 parfor i = 1:NT
     fprintf('%d\n',i)
     idx = randi(size(thetav,1)); % Choose random posterior set
+    % Get simulation parameters
     prec = repelem(precv(idx,:),7)';
     prec3 = squeeze(prec3v(idx,:,:));
     prec3 = reshape(repelem(prec3(:),7),[tend-tstart,Nage])';
@@ -107,15 +105,18 @@ parfor i = 1:NT
     alpw = alpwv(idx);
     deln = delnv(idx);
     deltastart = deltastartv(idx);
-    regl = reglv(idx,:);
-    [state,casest,casesIt] = runLTLAmodel(p,vac,Nvar,Nexp,Nvacstates,Nage,nonworkmov,tstart,tend,prev,prec3,mob,agemix,da,tau,R0,tr,alpw,alpn,deln,mobscale,impdistalpha,deltastart,neg,newvar,ltlaprecmob,surge,surgeboost,surgethresh); %[279 580]
+    
+    %Run model
+    [state,casest,casesIt] = runLTLAmodel(p,vac,Nvar,Nexp,Nvacstates,Nage,nonworkmov,tstart,tend,prev,prec3,mob,agemix,da,tau,R0,tr,alpw,alpn,deln,mobscale,impdistalpha,deltastart,neg,ltlaprecmob); %[279 580]
     states = states + state;
+    % Reporting rate and cases
     repo = repmat(reshape([repelem(thetav(idx,repgi(1)),22*7), repelem(thetav(idx,repgi(2)),21*7);repelem(thetav(idx,repgi(3)),43*7);repelem(thetav(idx,repgi(4)),43*7)],[Nage,1,1,1,tend-tstart]),[1,Nvacstates,Nvar,p.Nltlas,1]);
-    casesIrep(:,:,:,:,:,i) = binornd(casesIt,repo);
-    casesrep(:,:,:,:,:,i) = casesIrep(:,:,:,:,:,i) + binornd(casest-casesIt,repo);
+    casesIrep(:,:,:,:,:,i) = binornd(casesIt,repo); %Symptomatic cases
+    casesrep(:,:,:,:,:,i) = casesIrep(:,:,:,:,:,i) + binornd(casest-casesIt,repo); % All cases
 end
 states = states/NT;
 
+%Get means and percentiles
 meancasesrep = mean(squeeze(sum(sum(sum(casesrep,2),3),4)),3);
 meancasesrepw = squeeze(sum(reshape(meancasesrep,[3,7,43]),2));
 meanSGTF = mean(squeeze(sum(sum(sum(casesrep(:,:,2,:,:,:))),4))./squeeze(sum(sum(sum(sum(casesrep))))),2);
@@ -131,6 +132,8 @@ for i = 1:3
     prccasesrepagew(:,:,i) = prctile(squeeze(sum(reshape(squeeze(sum(sum(sum(casesrep(i,:,:,:,:,:))))),[7,43,NT])))',[2.5,97.5]);
 end
 
+
+% Choose plotting colours
 cols = [228,26,28
 55,126,184
 77,175,74
@@ -138,6 +141,29 @@ cols = [228,26,28
 255,127,0]/255;
 
 %% Plot model output
+
+lab = ["Home working scale","Distance move scale","Sympt. prob. (0-17)" "Sympt. prob. (18-65)" "Sympt. prob. (66+)" "Asympt. trans.","Initial alpha","Daily delta","Rep. (0-17) T1 (%)" "Rep. (0-17) T2 (%)" "Rep. (18-65) (%)" "Rep. (66+) (%)"];
+histA = [mobv mobscalev dav tauv alpnv delnv repv];
+
+figure
+for i = 1:length(lab)
+    subplot(ceil(length(lab)/ceil(sqrt(length(lab))))+1,ceil(sqrt(length(lab))),i)
+    histogram(histA(:,i));
+    xlabel(lab{i})
+end
+subplot(ceil(length(lab)/ceil(sqrt(length(lab))))+1,ceil(sqrt(length(lab))),(ceil(length(lab)/ceil(sqrt(length(lab))))*ceil(sqrt(length(lab)))+1):(ceil(length(lab)/ceil(sqrt(length(lab))))+1)*ceil(sqrt(length(lab))))
+precprc = prctile(precv,[2.5 97.5]);
+hold on
+plot([datetime(2020,1,279) repelem(datetime(2020,1,286:7:573),2) datetime(2020,1,580)],repelem(mean(precv),2),'Color',[cols(2,:)])
+pgon1 = fill([datetime(2020,1,279) repelem(datetime(2020,1,286:7:573),2) datetime(2020,1,580) fliplr([datetime(2020,1,279) repelem(datetime(2020,1,286:7:573),2) datetime(2020,1,580)])],...
+    [repelem(precprc(1,:),2) fliplr(repelem(precprc(2,:),2))],[cols(2,:)],'LineStyle','none');
+set(pgon1,'FaceAlpha',0.4);
+ylabel('Reduction in trans.')
+ylim([0 1])
+xlim([datetime(2020,1,279) datetime(2020,1,580)])
+if printing == 1
+    print(strcat('Para',name),'-r300','-dpng')
+end
 
 h = figure();
 set(h, 'PaperUnits','centimeters')

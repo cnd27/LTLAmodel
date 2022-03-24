@@ -1,6 +1,5 @@
 function vacdays = getVacDays(tstart,vac,p)
-%UNTITLED3 Summary of this function goes here
-%   Detailed explanation goes here
+%GETVACDAYS Days in each vaccine state
 
     vacdaysn = zeros(3,312,size(vac,3),3);
 

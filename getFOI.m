@@ -1,6 +1,5 @@
 function [foiD, foiN] = getFOI(p,state,mix,prec,agemix,Nage,Nvar,Nexp,Nvacstates)
-%GETFOI Summary of this function goes here
-%   Detailed explanation goes here
+%GETFOI Force of infection on each state
 
     % Number of people in day in (age,N)
     dN = reshape(sum(mix,2),[size(mix,1),size(mix,3)]);

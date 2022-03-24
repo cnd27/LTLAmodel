@@ -1,4 +1,5 @@
-function [state, cases, casesI,surgestate] = runLTLAmodel(p,vac,Nvar,Nexp,Nvacstates,Nage,nonworkmov,tstart,tend,prev,prec3,mob,agemix,da,tau,R0,tr,alpw,alpn,deln,mobscale,impdistalpha,deltastart,neg,newvar,ltlaprecmob,surge,surgeboost,surgethresh,delay,omitdd,maxper,svar,threshtype)
+function [state, cases, casesI] = runLTLAmodel(p,vac,Nvar,Nexp,Nvacstates,Nage,nonworkmov,tstart,tend,prev,prec3,mob,agemix,da,tau,R0,tr,alpw,alpn,deln,mobscale,impdistalpha,deltastart,neg,ltlaprecmob)
+%RUNLTLAMODEL Main model
 
     % Set parameters
     p.R0 = R0;
@@ -26,21 +27,14 @@ function [state, cases, casesI,surgestate] = runLTLAmodel(p,vac,Nvar,Nexp,Nvacst
 
     popdat = load('./data/popdata20.mat');
     centdist = sqrt((popdat.centroid(:,1)-popdat.centroid(:,1)').^2 + (popdat.centroid(:,2)-popdat.centroid(:,2)').^2); % Distance between LTLA centroids
-    if newvar == 1
-        load('./data/vardists.mat');
-        impdist = deldist;
-    else
-        load('./data/impdistdel.mat');
-    end
-    if surge == 1
-        surgestate = zeros(p.Nltlas,tend+delay+27);
-    end
+    load('./data/vardists.mat');
+    impdist = deldist;
     
     if tstart == 279
         l1 = load('./data/Rec1Oct20.mat');
         infatt = 1/160;
         vacdays = getVacDays(tstart,vac,p);
-        ICs = getICs(p,Nage,Nvacstates,Nvar,Nexp,vac,vacdays,infatt,l1.Rec,tstart,alpw,alpn,impdistalpha,newvar);
+        ICs = getICs(p,Nage,Nvacstates,Nvar,Nexp,vac,vacdays,infatt,l1.Rec,tstart,alpw,alpn,impdistalpha);
     else
         ICs = prev;
     end
@@ -51,7 +45,7 @@ function [state, cases, casesI,surgestate] = runLTLAmodel(p,vac,Nvar,Nexp,Nvacst
         else
             mix = getMix(p, popdat,mob(i,:),nonworkmov,tvalsi(i),centdist,mobscale); % Get mixing matrix
         end
-        if tstart + i - 1 > deltastart %&& tstart + i - 1 < 508
+        if tstart + i - 1 > deltastart
             tmpplace = randsample(1:312,deln,1,impdist);
             tab = histcounts(tmpplace,0.5:1:312.5);
             pl = find(tab>0);   
@@ -69,11 +63,7 @@ function [state, cases, casesI,surgestate] = runLTLAmodel(p,vac,Nvar,Nexp,Nvacst
             casesI(:,:,:,:,i) = casesI(:,:,:,:,i) + squeeze(events(:,:,:,1+Nexp,:));
             state(:,:,:,:,:,(i-1)*2+l+1) = doEventChange(state(:,:,:,:,:,(i-1)*2+l),events,Nexp);
             if l == 1 % Vaccinate in the day
-                if surge == 1
-                    [state(:,:,:,:,:,(i-1)*2+l+1),surgestate] = doVaccine(state(:,:,:,:,:,(i-1)*2+l+1),p,tvalsi(i),vac,Nexp,Nvar,Nage,Nvacstates,surge,surgeboost,surgethresh,delay,surgestate,omitdd,maxper,svar,threshtype);
-                else
-                    state(:,:,:,:,:,(i-1)*2+l+1) = doVaccine(state(:,:,:,:,:,(i-1)*2+l+1),p,tvalsi(i),vac,Nexp,Nvar,Nage,Nvacstates,surge);
-                end
+                    state(:,:,:,:,:,(i-1)*2+l+1) = doVaccine(state(:,:,:,:,:,(i-1)*2+l+1),p,tvalsi(i),vac,Nexp,Nvar,Nage,Nvacstates);
             end
         end
     end

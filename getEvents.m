@@ -1,6 +1,5 @@
 function events = getEvents(rates,taustep,state,nage,nvar,nexp,nvacstate,NN,neg)
-%GETEVENTS Summary of this function goes here
-%   Detailed explanation goes here
+%GETEVENTS Number of each event calculated
 
     % Get events for given rates with Poisson dist or negative binomial for infections
     if neg == 1
