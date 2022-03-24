@@ -40,7 +40,7 @@ impdistalpha = 1; % Use alpha case distribution, otherwise weight alpha cases to
 ltlaprecmob = 1; % Use LTLA %home data, otherwise average
 load('./data/regionnum.mat') %NHS region number of LTLAs
 printing = 0; % Save figures as PNGs
-plotmaps = 1; % Plot spatial spread on maps
+plotmaps = 0; % Plot spatial spread on maps
 name = "Plot"; % Plot name
 
 % Number of fitted parameters
